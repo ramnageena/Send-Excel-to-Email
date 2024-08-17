@@ -1,6 +1,8 @@
 package com.excel.service.impl;
 
+import com.excel.entity.PDOData;
 import com.excel.exception.ExcelGenerationException;
+import com.excel.repository.PDORepository;
 import com.excel.service.ExcelGenerate;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
@@ -12,6 +14,8 @@ import org.springframework.stereotype.Service;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.sql.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -25,6 +29,9 @@ public class ExcelGenerateImpl implements ExcelGenerate {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private PDORepository pdoRepository;
 
 
     @Override
@@ -89,6 +96,9 @@ public class ExcelGenerateImpl implements ExcelGenerate {
         try {
             dataFromDb = fetchDataFromDb();
             log.debug("Data fetched from database: {}", dataFromDb);
+            saveDataToPdoTable(dataFromDb);
+            log.info("Data store in PDO table successfully");
+
         } catch (Exception e) {
             log.error("Error fetching data from database", e);
             throw new ExcelGenerationException("Error fetching data from database", e);
@@ -161,5 +171,17 @@ public class ExcelGenerateImpl implements ExcelGenerate {
         headerFont.setBold(true);
         headerCellStyle.setFont(headerFont);
         return headerCellStyle;
+    }
+
+    private void saveDataToPdoTable(List<Map<String, Object>> data) {
+        for (Map<String, Object> mapData : data) {
+            PDOData pdoData = new PDOData();
+            pdoData.setCcy(mapData.get("ccy").toString());
+            pdoData.setAmount(new BigDecimal(mapData.get("amount").toString()));
+            pdoData.setMaturityDate(Date.valueOf(mapData.get("maturityDate").toString()));
+            pdoData.setReferenceNumber(mapData.get("referenceNumber").toString());
+            pdoRepository.save(pdoData);
+        }
+
     }
 }
